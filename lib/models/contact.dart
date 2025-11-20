@@ -1,10 +1,15 @@
+// lib/models/contact.dart
+import 'package:flutter/foundation.dart';
+
 class Contact {
-  final int? id;
-  final int? userId;
-  final String name;
-  final String phone;
-  final String email;
-  final String address;
+  final int? id;             // local DB id
+  final int? userId;         // owner user id
+  final String name;         // contact name
+  final String phone;        // phone number (primary)
+  final String email;        // email
+  final String address;      // address (optional)
+  final String? photoPath;   // local filesystem path to contact photo (nullable)
+  final String? whatsapp;    // whatsapp phone number in international format, e.g. +21612345678
 
   Contact({
     this.id,
@@ -13,8 +18,11 @@ class Contact {
     required this.phone,
     required this.email,
     this.address = '',
+    this.photoPath,
+    this.whatsapp,
   });
 
+  // Convert model -> map for SQLite insert/update
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'userId': userId,
@@ -22,11 +30,14 @@ class Contact {
       'phone': phone,
       'email': email,
       'address': address,
+      'photoPath': photoPath,
+      'whatsapp': whatsapp,
     };
     if (id != null) map['id'] = id;
     return map;
   }
 
+  // Create a Contact from a DB row map
   factory Contact.fromMap(Map<String, dynamic> map) => Contact(
         id: map['id'] as int?,
         userId: map['userId'] as int?,
@@ -34,5 +45,7 @@ class Contact {
         phone: map['phone'] ?? '',
         email: map['email'] ?? '',
         address: map['address'] ?? '',
+        photoPath: map['photoPath'] as String?,
+        whatsapp: map['whatsapp'] as String?,
       );
 }

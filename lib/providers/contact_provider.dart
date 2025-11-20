@@ -7,7 +7,6 @@ class ContactProvider extends ChangeNotifier {
   List<Contact> _contacts = [];
   List<Contact> get contacts => _contacts;
 
-  // Load contacts for a given user
   Future<void> loadContacts(int userId) async {
     final db = await DBHelper.instance.database;
     final rows = await db.query(
@@ -20,11 +19,9 @@ class ContactProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Add new contact
   Future<void> addContact(Contact contact) async {
     final db = await DBHelper.instance.database;
     final id = await db.insert('contacts', contact.toMap());
-    // Add contact locally with assigned id
     _contacts.add(Contact(
       id: id,
       userId: contact.userId,
@@ -32,11 +29,12 @@ class ContactProvider extends ChangeNotifier {
       phone: contact.phone,
       email: contact.email,
       address: contact.address,
+      photoPath: contact.photoPath,
+      whatsapp: contact.whatsapp,
     ));
     notifyListeners();
   }
 
-  // Update existing contact
   Future<void> updateContact(Contact contact) async {
     if (contact.id == null) return;
     final db = await DBHelper.instance.database;
@@ -46,8 +44,6 @@ class ContactProvider extends ChangeNotifier {
       where: 'id = ?',
       whereArgs: [contact.id],
     );
-
-    // Update locally
     final index = _contacts.indexWhere((c) => c.id == contact.id);
     if (index != -1) {
       _contacts[index] = contact;
@@ -55,19 +51,13 @@ class ContactProvider extends ChangeNotifier {
     }
   }
 
-  // Delete a contact
   Future<void> deleteContact(int id) async {
     final db = await DBHelper.instance.database;
-    await db.delete(
-      'contacts',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('contacts', where: 'id = ?', whereArgs: [id]);
     _contacts.removeWhere((c) => c.id == id);
     notifyListeners();
   }
 
-  // Clear contacts (for logout)
   void clearContacts() {
     _contacts = [];
     notifyListeners();

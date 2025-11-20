@@ -1,6 +1,9 @@
 // lib/screens/home_page.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../service/auth_service.dart';
 import '../providers/contact_provider.dart';
 import 'add_edit_contact_page.dart';
@@ -16,11 +19,19 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Load contacts for the current user
     final auth = Provider.of<AuthService>(context, listen: false);
     final provider = Provider.of<ContactProvider>(context, listen: false);
-    if (auth.currentUser != null) {
-      provider.loadContacts(auth.currentUser!.id);
+    if (auth.currentUser != null) provider.loadContacts(auth.currentUser!.id);
+  }
+
+  Future<void> _openWhatsApp(String number) async {
+    final clean = number.replaceAll(RegExp(r'[^0-9]'), '');
+    final url = Uri.parse("https://wa.me/$clean");
+
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Cannot open WhatsApp.")),
+      );
     }
   }
 
@@ -46,40 +57,46 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: provider.contacts.isEmpty
-          ? const Center(
-              child: Text(
-                "No contacts yet",
-                style: TextStyle(fontSize: 18),
-              ),
-            )
+          ? const Center(child: Text("No contacts yet", style: TextStyle(fontSize: 18)))
           : ListView.builder(
               itemCount: provider.contacts.length,
               itemBuilder: (context, index) {
                 final c = provider.contacts[index];
                 return Card(
                   color: Colors.green.shade100,
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                   child: ListTile(
-                    title: Text(c.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    leading: c.photoPath != null && c.photoPath!.isNotEmpty
+                        ? CircleAvatar(
+                            radius: 24,
+                            backgroundImage: FileImage(File(c.photoPath!)),
+                          )
+                        : CircleAvatar(
+                            radius: 24,
+                            child: Text(
+                              c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                    title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(c.phone),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (c.whatsapp != null && c.whatsapp!.isNotEmpty)
+                          IconButton(
+                            icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green),
+                            onPressed: () => _openWhatsApp(c.whatsapp!),
+                          ),
                         IconButton(
                           icon: const Icon(Icons.edit, color: Colors.blue),
                           onPressed: () async {
                             await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    AddEditContactPage(contact: c),
-                              ),
+                              MaterialPageRoute(builder: (_) => AddEditContactPage(contact: c)),
                             );
-                            if (auth.currentUser != null) {
-                              provider.loadContacts(auth.currentUser!.id);
-                            }
+                            final authUser = Provider.of<AuthService>(context, listen: false).currentUser;
+                            if (authUser != null) provider.loadContacts(authUser.id);
                           },
                         ),
                         IconButton(
@@ -87,9 +104,8 @@ class _HomePageState extends State<HomePage> {
                           onPressed: () async {
                             if (c.id != null) {
                               await provider.deleteContact(c.id!);
-                              if (auth.currentUser != null) {
-                                provider.loadContacts(auth.currentUser!.id);
-                              }
+                              final authUser = Provider.of<AuthService>(context, listen: false).currentUser;
+                              if (authUser != null) provider.loadContacts(authUser.id);
                             }
                           },
                         ),
@@ -105,13 +121,10 @@ class _HomePageState extends State<HomePage> {
         onPressed: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const AddEditContactPage(),
-            ),
+            MaterialPageRoute(builder: (_) => const AddEditContactPage()),
           );
-          if (auth.currentUser != null) {
-            provider.loadContacts(auth.currentUser!.id);
-          }
+          final authUser = Provider.of<AuthService>(context, listen: false).currentUser;
+          if (authUser != null) provider.loadContacts(authUser.id);
         },
       ),
     );
